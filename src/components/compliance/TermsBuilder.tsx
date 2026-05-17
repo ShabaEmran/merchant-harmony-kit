@@ -259,13 +259,13 @@ By entering, entrants agree to be bound by these terms.`;
 
           <Button
             type="button"
-            variant="outline"
-            size="sm"
             onClick={generateTerms}
-            className="gap-2"
+            className="group relative w-full gap-2 overflow-hidden border-0 bg-gradient-to-r from-violet-600 via-fuchsia-500 to-cyan-500 text-white shadow-[0_0_24px_-4px_rgba(168,85,247,0.6)] transition-all hover:shadow-[0_0_32px_-2px_rgba(168,85,247,0.8)] hover:brightness-110"
           >
-            <Sparkles className="h-3.5 w-3.5" />
-            Generate T&Cs from these fields
+            <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/25 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+            <Sparkles className="h-4 w-4 animate-pulse" />
+            <span className="font-medium tracking-wide">Generate T&amp;Cs with AI</span>
+            <Sparkles className="h-3 w-3 opacity-70" />
           </Button>
         </div>
       )}

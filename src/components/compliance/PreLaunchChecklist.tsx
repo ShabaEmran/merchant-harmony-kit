@@ -1,23 +1,32 @@
 // Pre-launch Compliance Checklist — Physical merchants (filtered)
 // Source: playe / src/components/wizard/timing/PreLaunchChecklist.tsx
 //
-// Read-only summary card that validates every compliance signal collected by
-// the UK Compliance accordion + T&Cs builder. Show "X / N passed" badge and
-// gate the Publish button behind allPassed if desired.
+// Redesigned card-stack layout (dark) inspired by Figma's design QA checklist:
+// each item is its own rounded card with a left-side checkbox, a small
+// category tag, and a primary statement. Optional sub-items render as
+// nested rows connected by a vertical rail.
 //
-// This is the PHYSICAL-MERCHANT-ONLY variant — CPG and Ecommerce branches
-// from the original have been removed.
+// Physical-merchant only — instant Tremendous email fulfilment, so the
+// historical "winner notification window" and "prize delivery SLA" checks
+// have been removed.
 
-import { Check, X, AlertCircle } from "lucide-react";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Check } from "lucide-react";
 import { useWizard } from "@/context/WizardContext";
 import { cn } from "@/lib/utils";
 
-interface CheckItem {
+type Category = "COMPLIANCE" | "LEGAL" | "DATA" | "FULFILMENT";
+
+interface SubItem {
+  label: string;
+  passed: boolean;
+}
+
+interface CheckGroup {
+  category: Category;
   label: string;
   passed: boolean;
   detail?: string;
+  subItems?: SubItem[];
 }
 
 const PreLaunchChecklist = () => {
@@ -37,121 +46,180 @@ const PreLaunchChecklist = () => {
     termsLower.includes("minimum") &&
     (termsLower.includes("spend") || termsLower.includes("qualifying"));
 
-  const items: CheckItem[] = [
+  const promoterNameOk = !!campaignData.promoterName?.trim();
+  const promoterAddressOk = !!campaignData.promoterAddress?.trim();
+  const termsOk = (campaignData.termsAndConditions ?? "").trim().length > 100;
+
+  const groups: CheckGroup[] = [
     ...(requiresFER
       ? [{
-          label: "Free Entry Route configured",
+          category: "COMPLIANCE" as Category,
+          label: "Free Entry Route is configured.",
           passed: ferOk,
           detail: "Required for Fixed-Pool draws under the UK Gambling Act 2005.",
         }]
       : []),
-    ...(requiresMinSpendDisclosure
-      ? [{
-          label: "Minimum-spend disclosure included in T&Cs",
-          passed: minSpendDisclosed,
-          detail: "CAP §8.17 — significant conditions must be stated up-front.",
-        }]
-      : []),
     {
-      label: "Age gate set",
-      passed: !!campaignData.ageGate,
+      category: "LEGAL",
+      label: "Promoter identity is complete.",
+      passed: promoterNameOk && promoterAddressOk,
+      subItems: [
+        { label: "Promoter legal name is provided.", passed: promoterNameOk },
+        { label: "Registered address is provided.", passed: promoterAddressOk },
+      ],
     },
     {
-      label: "Promoter legal name & address",
+      category: "LEGAL",
+      label: "Terms & Conditions are published.",
       passed:
-        !!campaignData.promoterName?.trim() &&
-        !!campaignData.promoterAddress?.trim(),
-      detail: "Mandatory under CAP Code §8.17.",
+        termsOk &&
+        (!requiresMinSpendDisclosure || minSpendDisclosed),
+      subItems: [
+        { label: "T&Cs body is present (>100 chars).", passed: termsOk },
+        ...(requiresMinSpendDisclosure
+          ? [{
+              label: "Minimum-spend disclosure is included.",
+              passed: minSpendDisclosed,
+            }]
+          : []),
+      ],
     },
     {
-      label: "Terms & Conditions present",
-      passed: (campaignData.termsAndConditions ?? "").trim().length > 100,
-      detail: "Use the guided builder to cover all CAP-mandated fields.",
+      category: "COMPLIANCE",
+      label: "Age & geographic gates are set.",
+      passed: !!campaignData.ageGate && !!campaignData.geoRestriction,
+      subItems: [
+        { label: "Age gate selected.", passed: !!campaignData.ageGate },
+        {
+          label: "Geographic eligibility selected.",
+          passed: !!campaignData.geoRestriction,
+        },
+      ],
     },
     {
-      label: "Marketing opt-in surfaced (unbundled)",
-      passed: !!campaignData.marketingOptInOffered,
-      detail: "Required by UK GDPR + PECR.",
-    },
-    {
-      label: "PECR consent for device fingerprinting",
+      category: "DATA",
+      label: "Privacy & consent obligations are met.",
       passed:
-        !campaignData.deviceFingerprinting || !!campaignData.pecrAcknowledged,
+        !!campaignData.marketingOptInOffered &&
+        (!campaignData.deviceFingerprinting || !!campaignData.pecrAcknowledged) &&
+        (!campaignData.exifScan || !!campaignData.locationDataAcknowledged),
+      subItems: [
+        {
+          label: "Marketing opt-in is surfaced unbundled.",
+          passed: !!campaignData.marketingOptInOffered,
+        },
+        ...(campaignData.deviceFingerprinting
+          ? [{
+              label: "PECR consent acknowledged for fingerprinting.",
+              passed: !!campaignData.pecrAcknowledged,
+            }]
+          : []),
+        ...(campaignData.exifScan
+          ? [{
+              label: "Location-data lawful basis disclosed (EXIF).",
+              passed: !!campaignData.locationDataAcknowledged,
+            }]
+          : []),
+      ],
     },
     {
-      label: "Location data lawful basis (EXIF)",
-      passed: !campaignData.exifScan || !!campaignData.locationDataAcknowledged,
-    },
-    {
-      label: "Winner notification window",
-      passed:
-        !!campaignData.winnerNotificationDays &&
-        campaignData.winnerNotificationDays > 0,
-    },
-    {
-      label: "Prize delivery SLA ≤ 30 days",
-      passed:
-        !!campaignData.prizeDeliveryDays && campaignData.prizeDeliveryDays <= 30,
-      detail: "CAP recommendation.",
+      category: "FULFILMENT",
+      label: "Winner notification & prize delivery are instant.",
+      passed: true,
+      detail:
+        "Winners are notified immediately on pool exhaustion and prizes are delivered by email via Tremendous at the moment of selection.",
     },
   ];
 
-  const passedCount = items.filter((i) => i.passed).length;
-  const allPassed = passedCount === items.length;
+  const allItems = groups.flatMap((g) => [
+    g,
+    ...(g.subItems ?? []).map((s) => ({ passed: s.passed })),
+  ]);
+  const passedCount = allItems.filter((i) => i.passed).length;
+  const total = allItems.length;
+  const allPassed = passedCount === total;
 
   return (
-    <Card className="p-4 space-y-3 bg-card border-border">
-      <div className="flex items-center justify-between">
+    <div className="space-y-3">
+      <div className="flex items-center justify-between px-1">
         <div>
-          <h3 className="text-sm font-medium text-foreground">Pre-launch compliance checklist</h3>
-          <p className="text-xs text-foreground/60">
+          <h3 className="text-sm font-semibold text-foreground">
+            Pre-launch checklist
+          </h3>
+          <p className="text-[11px] text-muted-foreground">
             All items should pass before publishing.
           </p>
         </div>
-        <Badge
-          variant={allPassed ? "default" : "destructive"}
-          className={cn(allPassed && "bg-green-600 hover:bg-green-600")}
+        <span
+          className={cn(
+            "rounded-full px-2.5 py-0.5 text-[11px] font-medium",
+            allPassed
+              ? "bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/30"
+              : "bg-destructive/15 text-destructive ring-1 ring-destructive/30",
+          )}
         >
-          {passedCount}/{items.length}
-        </Badge>
+          {passedCount}/{total}
+        </span>
       </div>
-      <ul className="space-y-1.5">
-        {items.map((it) => (
-          <li
-            key={it.label}
-            className="flex items-start gap-2 text-xs"
+
+      <div className="space-y-2.5">
+        {groups.map((g) => (
+          <div
+            key={g.category + g.label}
+            className="rounded-xl border border-border bg-card/60 p-4 shadow-sm backdrop-blur-sm"
           >
-            <span
-              className={cn(
-                "mt-0.5 inline-flex h-4 w-4 items-center justify-center rounded-full flex-shrink-0",
-                it.passed
-                  ? "bg-green-600 text-white"
-                  : "bg-destructive text-destructive-foreground"
-              )}
-            >
-              {it.passed ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
-            </span>
-            <div className="flex-1">
-              <span
-                className={cn(
-                  "text-foreground",
-                  !it.passed && "text-destructive font-medium"
+            <div className="flex items-start gap-3">
+              <CheckBox passed={g.passed} />
+              <div className="min-w-0 flex-1">
+                <div className="text-[10px] font-semibold tracking-[0.14em] text-muted-foreground">
+                  {g.category}
+                </div>
+                <div className="mt-0.5 text-sm leading-snug text-foreground">
+                  {g.label}
+                </div>
+                {g.detail && (
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    {g.detail}
+                  </p>
                 )}
-              >
-                {it.label}
-              </span>
-              {it.detail && !it.passed && (
-                <p className="text-foreground/60 mt-0.5 flex items-start gap-1">
-                  <AlertCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                  {it.detail}
-                </p>
-              )}
+              </div>
             </div>
-          </li>
+
+            {g.subItems && g.subItems.length > 0 && (
+              <div className="relative mt-3 ml-2 space-y-2 border-l border-border/70 pl-5">
+                {g.subItems.map((s) => (
+                  <div key={s.label} className="flex items-start gap-2.5">
+                    <span className="absolute -left-px h-4 w-4" />
+                    <CheckBox passed={s.passed} small />
+                    <div className="pt-0.5 text-xs leading-snug text-foreground/85">
+                      {s.label}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         ))}
-      </ul>
-    </Card>
+      </div>
+    </div>
   );
 };
+
+function CheckBox({ passed, small = false }: { passed: boolean; small?: boolean }) {
+  const size = small ? "h-4 w-4 rounded-[5px]" : "h-5 w-5 rounded-md";
+  return (
+    <span
+      className={cn(
+        "mt-0.5 inline-flex flex-shrink-0 items-center justify-center border transition-colors",
+        size,
+        passed
+          ? "border-emerald-500/60 bg-emerald-500/15 text-emerald-400"
+          : "border-border bg-background/40 text-transparent",
+      )}
+    >
+      <Check className={small ? "h-3 w-3" : "h-3.5 w-3.5"} strokeWidth={3} />
+    </span>
+  );
+}
 
 export default PreLaunchChecklist;
