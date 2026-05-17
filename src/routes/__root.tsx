@@ -72,14 +72,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
+      { title: "playlegal" },
+      { name: "description", content: "Merchant Compliance Suite provides UK compliance tools and a T&C generator for physical merchants." },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { property: "og:title", content: "playlegal" },
+      { property: "og:description", content: "Merchant Compliance Suite provides UK compliance tools and a T&C generator for physical merchants." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "playlegal" },
+      { name: "twitter:description", content: "Merchant Compliance Suite provides UK compliance tools and a T&C generator for physical merchants." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/018ad535-d30f-4e15-80b3-fae2084bf65a/id-preview-41fd9783--54e5dac0-7ff0-49aa-a949-84386cae40a3.lovable.app-1778977227471.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/018ad535-d30f-4e15-80b3-fae2084bf65a/id-preview-41fd9783--54e5dac0-7ff0-49aa-a949-84386cae40a3.lovable.app-1778977227471.png" },
     ],
     links: [
       {
@@ -96,11 +100,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en">
       <head>
         <HeadContent />
       </head>
-      <body className="bg-background text-foreground">
+      <body>
         {children}
         <Scripts />
       </body>
