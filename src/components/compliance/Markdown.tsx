@@ -78,7 +78,7 @@ export function Markdown({ source }: { source: string }) {
           : level === 3
           ? "mt-4 mb-2 text-base font-semibold"
           : "mt-3 mb-1 text-sm font-semibold";
-      const Tag = (`h${level}` as unknown) as keyof JSX.IntrinsicElements;
+      const Tag = `h${level}` as "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
       out.push(<Tag key={key++} className={cls}>{renderInline(h[2])}</Tag>);
       i++;
       continue;
